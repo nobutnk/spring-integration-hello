@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xmlns:int-stream="http://www.springframework.org/schema/integration/stream"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                http://www.springframework.org/schema/beans/spring-beans.xsd
+                http://www.springframework.org/schema/integration
+                http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+    <!-- Simple producer -->
+    <bean id="customer" class="com.nobutnk.springintegration.example.service.cafe.Customer">
+        <constructor-arg name="orderManager" ref="orderManager"/>
+    </bean>
+
+    <!-- Simple facade method which accepts messages into channel -->
+    <int:gateway id="orderManager"
+        service-interface="com.nobutnk.springintegration.example.service.cafe.OrderManager"
+        default-request-channel="coffeeOrders"/>
+
+    <!-- Channel for incoming orders -->
+    <int:channel id="coffeeOrders"/>
+
+    <!-- Subscriber - Barista 2 -->
+    <int:service-activator id="barista1" input-channel="coffeeOrders" ref="ben" method="makeCoffee"/>
+
+    <bean id="ben" class="com.nobutnk.springintegration.example.service.cafe.Barista">
+        <constructor-arg value="Ben"/>
+        <constructor-arg type="java.util.concurrent.ThreadPoolExecutor" ref="executorService"/>
+    </bean>
+
+    <!-- Subscriber - Barista 1 -->
+    <int:service-activator id="barista2" input-channel="coffeeOrders" ref="dave" method="makeCoffee"/>
+
+    <bean id="dave" class="com.nobutnk.springintegration.example.service.cafe.Barista">
+        <constructor-arg value="Dave"/>
+        <constructor-arg type="java.util.concurrent.ThreadPoolExecutor" ref="executorService"/>
+    </bean>
+    
+    <bean id="executorService" class="org.springframework.scheduling.concurrent.ThreadPoolExecutorFactoryBean">
+        <property name="corePoolSize" value="2" />
+        <property name="maxPoolSize" value="2" />
+        <property name="queueCapacity" value="1000" />
+    </bean>
+    
+    <!-- you may just copy the following lines -->
+    <bean id="exporter" class="org.springframework.jmx.export.MBeanExporter" lazy-init="false">
+        <property name="autodetect" value="true" />
+        <property name="namingStrategy" ref="namingStrategy" />
+        <property name="assembler" ref="assembler" />
+    </bean>
+     
+    <bean id="jmxAttributeSource" class="org.springframework.jmx.export.annotation.AnnotationJmxAttributeSource" />
+     
+    <bean id="assembler" class="org.springframework.jmx.export.assembler.MetadataMBeanInfoAssembler">
+        <property name="attributeSource" ref="jmxAttributeSource" />
+    </bean>
+     
+    <bean id="namingStrategy" class="org.springframework.jmx.export.naming.MetadataNamingStrategy">
+        <property name="attributeSource" ref="jmxAttributeSource" />
+    </bean>
+    
+    <bean id="threadPoolMBean" class="com.nobutnk.springintegration.example.service.cafe.ThreadPoolMBean" >
+        <constructor-arg type="java.util.concurrent.ThreadPoolExecutor" ref="executorService"/>
+    </bean>
+
+</beans>
